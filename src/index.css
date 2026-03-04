@@ -1,0 +1,118 @@
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&family=Noto+Kufi+Arabic:wght@400;500;600;700;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 45 30% 97%;
+    --foreground: 220 25% 12%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 220 25% 12%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 220 25% 12%;
+
+    --primary: 162 63% 30%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 45 40% 92%;
+    --secondary-foreground: 220 25% 12%;
+
+    --muted: 45 20% 94%;
+    --muted-foreground: 220 10% 46%;
+
+    --accent: 38 92% 55%;
+    --accent-foreground: 220 25% 12%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 220 13% 88%;
+    --input: 220 13% 88%;
+    --ring: 162 63% 30%;
+
+    --radius: 0.75rem;
+
+    --success: 142 71% 35%;
+    --success-foreground: 0 0% 100%;
+
+    --warning: 38 92% 50%;
+    --warning-foreground: 220 25% 12%;
+
+    --sidebar-background: 162 35% 18%;
+    --sidebar-foreground: 0 0% 95%;
+    --sidebar-primary: 38 92% 55%;
+    --sidebar-primary-foreground: 220 25% 12%;
+    --sidebar-accent: 162 30% 25%;
+    --sidebar-accent-foreground: 0 0% 95%;
+    --sidebar-border: 162 20% 28%;
+    --sidebar-ring: 38 92% 55%;
+  }
+
+  .dark {
+    --background: 220 25% 8%;
+    --foreground: 45 20% 95%;
+
+    --card: 220 20% 12%;
+    --card-foreground: 45 20% 95%;
+
+    --popover: 220 20% 12%;
+    --popover-foreground: 45 20% 95%;
+
+    --primary: 162 55% 40%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 220 15% 18%;
+    --secondary-foreground: 45 20% 95%;
+
+    --muted: 220 15% 18%;
+    --muted-foreground: 220 10% 60%;
+
+    --accent: 38 85% 50%;
+    --accent-foreground: 220 25% 12%;
+
+    --destructive: 0 62% 40%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 220 15% 22%;
+    --input: 220 15% 22%;
+    --ring: 162 55% 40%;
+
+    --success: 142 60% 40%;
+    --success-foreground: 0 0% 100%;
+
+    --warning: 38 85% 50%;
+    --warning-foreground: 220 25% 12%;
+
+    --sidebar-background: 220 25% 6%;
+    --sidebar-foreground: 45 20% 95%;
+    --sidebar-primary: 38 85% 50%;
+    --sidebar-primary-foreground: 220 25% 12%;
+    --sidebar-accent: 220 20% 14%;
+    --sidebar-accent-foreground: 45 20% 95%;
+    --sidebar-border: 220 15% 18%;
+    --sidebar-ring: 38 85% 50%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html {
+    direction: rtl;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans;
+    font-family: 'IBM Plex Sans Arabic', 'Noto Kufi Arabic', sans-serif;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Noto Kufi Arabic', 'IBM Plex Sans Arabic', sans-serif;
+  }
+}
