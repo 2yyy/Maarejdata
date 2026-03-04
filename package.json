@@ -2,6 +2,7 @@
   "name": "vite_react_shadcn_ts",
   "private": true,
   "version": "0.0.0",
+  "homepage": "https://2yyy.github.io/Maarejdata",
   "type": "module",
   "scripts": {
     "dev": "vite",
