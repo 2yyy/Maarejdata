@@ -15,6 +15,8 @@ import MaarijData from "./pages/MaarijData";
 import AcademicCalendar from "./pages/AcademicCalendar";
 import AppLayout from "./components/AppLayout";
 import NotFound from "./pages/NotFound";
+import MonitoringPage from "./pages/monitoring";
+import SummaryReport from './pages/SummaryReport';
 
 const queryClient = new QueryClient();
 
@@ -27,6 +29,8 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
       </div>
     );
   if (!user) return <Navigate to="/login" replace />;
+  
+  
   return <AppLayout>{children}</AppLayout>;
 }
 
@@ -43,6 +47,8 @@ function AppRoutes() {
   return (
     <Routes>
       <Route path="/login" element={user ? <Navigate to="/dashboard" replace /> : <Login />} />
+      
+      {/* */}
       <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
       <Route path="/students" element={<ProtectedRoute><Students /></ProtectedRoute>} />
       <Route path="/circles" element={<ProtectedRoute><Circles /></ProtectedRoute>} />
@@ -51,6 +57,12 @@ function AppRoutes() {
       <Route path="/wissam-maher" element={<ProtectedRoute><WissamMaher /></ProtectedRoute>} />
       <Route path="/maarij-data" element={<ProtectedRoute><MaarijData /></ProtectedRoute>} />
       <Route path="/calendar" element={<ProtectedRoute><AcademicCalendar /></ProtectedRoute>} />
+      
+      {/* */}
+      <Route path="/summary" element={<ProtectedRoute><SummaryReport /></ProtectedRoute>}/>
+      
+      <Route path="/monitoring" element={<ProtectedRoute><MonitoringPage /></ProtectedRoute>} />
+      
       <Route path="/" element={<Navigate to="/dashboard" replace />} />
       <Route path="*" element={<NotFound />} />
     </Routes>

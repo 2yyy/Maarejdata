@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth'; 
 import { Card, CardContent } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Award, Target, Calendar, CheckCircle2, Trophy, Edit3, Save, Medal, Clock, XCircle, Sparkles, Flag } from 'lucide-react';
@@ -19,8 +20,8 @@ interface StudentReport {
   total_excused: number;
   total_unexcused: number;
   total_maarij: number;
-  goal_requirements: string; // تُستخدم لـ "بداية الهدف"
-  goal_end_text: string;      // تُستخدم لـ "نهاية الهدف"
+  goal_requirements: string; 
+  goal_end_text: string;      
   goal_start_date: string;
   goal_end_date: string;
   is_goal_achieved: boolean;
@@ -30,6 +31,7 @@ interface StudentReport {
 interface Circle { id: string; name: string; }
 
 export default function WissamMaher() {
+  const { role, activeComplexId } = useAuth(); 
   const { toast } = useToast();
   const [course, setCourse] = useState('1');
   const [circleId, setCircleId] = useState('all');
@@ -39,18 +41,28 @@ export default function WissamMaher() {
   const [isDialogOpen, setIsDialogOpen] = useState(false); 
 
   useEffect(() => {
-    supabase.from('circles').select('id, name').then(({ data }) => {
+    
+    let query = supabase.from('circles').select('id, name');
+    if (activeComplexId) {
+      query = query.eq('complex_id', activeComplexId);
+    }
+    
+    query.then(({ data }) => {
       if (data) setCircles(data);
     });
-  }, []);
+  }, [activeComplexId]);
 
   const fetchReports = async () => {
     const startWeek = (parseInt(course) - 1) * 4 + 1;
     const endWeek = startWeek + 3;
 
-    const { data: students } = await supabase
-      .from('students')
-      .select('id, name, circle_id, goal_requirements, goal_end_text, goal_start_date, goal_end_date, is_goal_achieved');
+    
+    let studentsQuery = supabase.from('students').select('id, name, circle_id, goal_requirements, goal_end_text, goal_start_date, goal_end_date, is_goal_achieved');
+    if (activeComplexId) {
+      studentsQuery = studentsQuery.eq('complex_id', activeComplexId);
+    }
+    
+    const { data: students } = await studentsQuery;
     
     if (!students?.length) { setReports([]); return; }
 
@@ -93,7 +105,7 @@ export default function WissamMaher() {
       const circleStudents = allRows
         .filter(r => r.circle_id === cId)
         .sort((a, b) => {
-          // الأولويات: منجز -> أقل غياب -> أكثر نقاط
+          
           if (a.is_goal_achieved !== b.is_goal_achieved) return a.is_goal_achieved ? -1 : 1;
           if (a.total_unexcused !== b.total_unexcused) return a.total_unexcused - b.total_unexcused;
           return b.total_maarij - a.total_maarij;
@@ -112,7 +124,7 @@ export default function WissamMaher() {
     }));
   };
 
-  useEffect(() => { fetchReports(); }, [circleId, course, circles]);
+  useEffect(() => { fetchReports(); }, [circleId, course, circles, activeComplexId]); 
 
   const handleUpdateGoal = async () => {
     if (!editingStudent) return;
@@ -148,7 +160,7 @@ export default function WissamMaher() {
 
   return (
     <div className="space-y-4 p-4 pb-20 animate-fade-in" dir="rtl">
-      {/* الترويسة والفلترة */}
+      {/* */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 rounded-2xl border shadow-sm">
         <h1 className="font-display text-xl font-bold flex items-center gap-2 text-primary">
           <Award className="h-6 w-6 text-accent" /> وسام ماهر
@@ -221,7 +233,7 @@ export default function WissamMaher() {
   <DialogTitle className="text-center">تعديل هدف: {r.name}</DialogTitle>
 </DialogHeader>
 <div className="grid gap-4 py-4">
-  {/* السطر الأول: بداية ونهاية الهدف بجانب بعضهما */}
+  {/* */}
   <div className="grid grid-cols-2 gap-4">
     <div className="space-y-2 text-center">
       <Label className="block">بداية الهدف</Label>
@@ -239,7 +251,7 @@ export default function WissamMaher() {
     </div>
   </div>
 
-  {/* السطر الثاني: التواريخ بجانب بعضها */}
+  {/* */}
   <div className="grid grid-cols-2 gap-4">
     <div className="space-y-2 text-center">
       <Label className="block">تاريخ البداية</Label>
@@ -259,7 +271,7 @@ export default function WissamMaher() {
     </div>
   </div>
 
-  {/* خيار إنجاز الهدف */}
+  {/* */}
   <div className="flex items-center gap-2 pt-2 justify-center">
     <input 
       type="checkbox" 
@@ -278,7 +290,7 @@ export default function WissamMaher() {
                 </div>
               </div>
 
-              {/* قسم الإحصائيات (حضور، تأخر، إلخ) */}
+              {/* */}
               <div className="p-3 bg-muted/20 grid grid-cols-4 gap-2">
                 <div className="bg-green-50/50 border border-green-100 rounded-lg p-2 text-center">
                   <p className="text-[10px] text-green-600 font-bold mb-0.5">حضور</p>

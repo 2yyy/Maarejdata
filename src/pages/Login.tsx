@@ -44,7 +44,7 @@ export default function Login() {
           <div className="mx-auto w-16 h-16 bg-primary rounded-2xl flex items-center justify-center">
             <BookOpen className="h-8 w-8 text-primary-foreground" />
           </div>
-          <CardTitle className="font-display text-2xl">نظام المعارج</CardTitle>
+          <CardTitle className="font-display text-2xl">منصة معارج</CardTitle>
           <p className="text-muted-foreground text-sm">
             إدارة حلقات تحفيظ القرآن الكريم
           </p>

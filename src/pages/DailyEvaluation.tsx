@@ -1,8 +1,8 @@
 import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth'; // تمت الإضافة: جلب الصلاحيات
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
@@ -24,30 +24,50 @@ interface EvalData {
 
 export default function DailyEvaluation() {
   const { toast } = useToast();
+  const { role, circleId: authCircleId, activeComplexId } = useAuth(); // التعديل: جلب activeComplexId
   const [week, setWeek] = useState('1');
   const [day, setDay] = useState(DAYS[0]);
-  const [circleId, setCircleId] = useState<string>('all');
-  const [dateValue, setDateValue] = useState(new Date().toISOString().split('T')[0]); // تاريخ اليوم افتراضيًا
+  const [selectedCircleId, setSelectedCircleId] = useState<string>('all');
+  const [dateValue, setDateValue] = useState(new Date().toISOString().split('T')[0]);
   const [dateType, setDateType] = useState<'هجري' | 'ميلادي'>('ميلادي');
   const [circles, setCircles] = useState<Circle[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
   const [evals, setEvals] = useState<Record<string, EvalData>>({});
 
+  // التعديل: جلب الحلقات التابعة للمجمع النشط فقط
   useEffect(() => {
-    supabase.from('circles').select('*').then(({ data }) => {
+    let query = supabase.from('circles').select('*');
+    if (activeComplexId) {
+      query = query.eq('complex_id', activeComplexId);
+    }
+    query.then(({ data }) => {
       if (data) setCircles(data);
     });
-  }, []);
+  }, [activeComplexId]);
 
   useEffect(() => {
     const fetchStudents = async () => {
+      const targetCircleId = role === 'teacher' ? authCircleId : selectedCircleId;
+
+      if (role === 'teacher' && !targetCircleId) {
+        setStudents([]);
+        return;
+      }
+
       let query = supabase.from('students').select('id, name, circle_id').order('name', { ascending: true });
-      if (circleId !== 'all') query = query.eq('circle_id', circleId);
+      
+      // التعديل: تصفية الطلاب حسب الحلقة أو حسب المجمع (إذا اختار الكل)
+      if (targetCircleId !== 'all') {
+        query = query.eq('circle_id', targetCircleId);
+      } else if (activeComplexId) {
+        query = query.eq('complex_id', activeComplexId);
+      }
+
       const { data } = await query;
       if (data) setStudents(data);
     };
     fetchStudents();
-  }, [circleId]);
+  }, [selectedCircleId, authCircleId, role, activeComplexId]); // التحديث عند تغير المجمع
 
   useEffect(() => {
     if (!students.length) return;
@@ -80,7 +100,19 @@ export default function DailyEvaluation() {
     const current = evals[studentId] || {
       attendance: 'غير محدد', uniform_file_score: 0, mem_rev_score: 0, maarij_points: 0,
     };
-    const merged = { ...current, ...data };
+    
+    let merged = { ...current, ...data };
+    
+    if ('maarij_points' in data) {
+      const pts = data.maarij_points ?? 0;
+      let newMemScore = 0;
+      if (pts >= 19) newMemScore = 5;
+      else if (pts >= 17) newMemScore = 4;
+      else if (pts === 16) newMemScore = 3;
+      else if (pts <= 15) newMemScore = 0;
+      
+      merged.mem_rev_score = newMemScore;
+    }
 
     const { error } = await supabase.from('daily_evaluations').upsert(
       {
@@ -104,11 +136,16 @@ export default function DailyEvaluation() {
     }
   }, [students, week, day, evals, toast]);
 
-  const handleNumericInput = (studentId: string, field: keyof EvalData, value: string, max: number) => {
-    const cleaned = value.replace(/[^0-9]/g, ''); 
-    let num = cleaned === '' ? 0 : parseInt(cleaned);
-    if (num > max) num = max; 
-    saveEval(studentId, { [field]: num });
+  const handleInputChange = (studentId: string, field: keyof EvalData, value: string, max: number) => {
+    const cleaned = value.replace(/[^0-9]/g, '');
+    if (cleaned === '') {
+        setEvals(prev => ({ ...prev, [studentId]: { ...prev[studentId], [field]: 0 } }));
+        return;
+    }
+    let num = parseInt(cleaned);
+    if (num > max) num = max;
+    
+    setEvals(prev => ({ ...prev, [studentId]: { ...prev[studentId], [field]: num } }));
   };
 
   return (
@@ -118,13 +155,15 @@ export default function DailyEvaluation() {
           <CheckCircle2 className="h-5 w-5" /> التقييم اليومي
         </h1>
         
-        <Link 
-          to="/wissam-maher" 
-          className="flex items-center gap-1.5 bg-accent/10 text-accent px-3 py-1.5 rounded-lg border border-accent/20 hover:bg-accent/20 transition-all shadow-sm"
-        >
-          <Trophy className="h-4 w-4" />
-          <span className="text-[11px] font-bold">وسام ماهر</span>
-        </Link>
+        {role === 'admin' && (
+          <Link 
+            to="/wissam-maher" 
+            className="flex items-center gap-1.5 bg-accent/10 text-accent px-3 py-1.5 rounded-lg border border-accent/20 hover:bg-accent/20 transition-all shadow-sm"
+          >
+            <Trophy className="h-4 w-4" />
+            <span className="text-[11px] font-bold">وسام ماهر</span>
+          </Link>
+        )}
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
@@ -140,15 +179,17 @@ export default function DailyEvaluation() {
             {DAYS.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
           </SelectContent>
         </Select>
-        <Select value={circleId} onValueChange={setCircleId}>
-          <SelectTrigger dir="rtl" className="h-9 text-xs"><SelectValue placeholder="الحلقة" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">كل الحلقات</SelectItem>
-            {circles.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
-          </SelectContent>
-        </Select>
         
-        {/* حقل التاريخ المطور (تقويم جاهز) */}
+        {role !== 'teacher' && (
+          <Select value={selectedCircleId} onValueChange={setSelectedCircleId}>
+            <SelectTrigger dir="rtl" className="h-9 text-xs"><SelectValue placeholder="الحلقة" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">كل الحلقات</SelectItem>
+              {circles.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        )}
+        
         <div className="relative flex items-center">
           <Input 
             type={dateType === 'ميلادي' ? 'date' : 'text'} 
@@ -186,20 +227,21 @@ export default function DailyEvaluation() {
                 </div>
               </AccordionTrigger>
               <AccordionContent className="px-4 space-y-5 pt-3">
-                <div>
+                <div className="max-w-xs mx-auto">
                   <Label className="text-[13px] text-muted-foreground mb-2 block text-center">حالة الحضور والغياب</Label>
-                  <RadioGroup
-                    value={evalData.attendance}
+                  <Select 
+                    value={evalData.attendance} 
                     onValueChange={(v) => saveEval(student.id, { attendance: v })}
-                    className="flex flex-wrap gap-2 justify-center"
                   >
-                    {ATTENDANCE_OPTIONS.map(opt => (
-                      <div key={opt} className="flex items-center gap-1.5 bg-muted/30 px-3 py-1.5 rounded-md border border-transparent hover:border-primary/20 transition-colors">
-                        <RadioGroupItem value={opt} id={`${student.id}-${opt}`} />
-                        <Label htmlFor={`${student.id}-${opt}`} className="text-xs cursor-pointer">{opt}</Label>
-                      </div>
-                    ))}
-                  </RadioGroup>
+                    <SelectTrigger dir="rtl" className="h-9 text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {ATTENDANCE_OPTIONS.map(opt => (
+                        <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pb-2">
@@ -208,8 +250,9 @@ export default function DailyEvaluation() {
                     <Input
                       type="text"
                       inputMode="numeric"
-                      value={evalData.uniform_file_score === 0 ? '' : evalData.uniform_file_score}
-                      onChange={(e) => handleNumericInput(student.id, 'uniform_file_score', e.target.value, 3)}
+                      value={evalData.uniform_file_score || ''}
+                      onChange={(e) => handleInputChange(student.id, 'uniform_file_score', e.target.value, 3)}
+                      onBlur={() => saveEval(student.id, { uniform_file_score: evalData.uniform_file_score })}
                       className="text-center font-medium focus:ring-primary h-9 w-24 mx-auto"
                     />
                   </div>
@@ -219,8 +262,8 @@ export default function DailyEvaluation() {
                     <Input
                       type="text"
                       inputMode="numeric"
-                      value={evalData.mem_rev_score === 0 ? '' : evalData.mem_rev_score}
-                      onChange={(e) => handleNumericInput(student.id, 'mem_rev_score', e.target.value, 5)}
+                      readOnly
+                      value={evalData.mem_rev_score}
                       className="text-center font-bold border-primary/40 focus:ring-primary bg-primary/5 shadow-sm h-9 w-24 mx-auto"
                     />
                   </div>
@@ -230,8 +273,9 @@ export default function DailyEvaluation() {
                     <Input
                       type="text"
                       inputMode="numeric"
-                      value={evalData.maarij_points === 0 ? '' : evalData.maarij_points}
-                      onChange={(e) => handleNumericInput(student.id, 'maarij_points', e.target.value, 20)}
+                      value={evalData.maarij_points || ''}
+                      onChange={(e) => handleInputChange(student.id, 'maarij_points', e.target.value, 20)}
+                      onBlur={() => saveEval(student.id, { maarij_points: evalData.maarij_points })}
                       className="text-center font-medium focus:ring-primary h-9 w-24 mx-auto"
                     />
                   </div>

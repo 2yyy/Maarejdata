@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from '@/hooks/useAuth'; // التعديل: جلب نطاق المجمع
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
@@ -41,7 +41,7 @@ const ManualScoreInput = ({ label, colorClass, initialValue, onSave }: any) => {
 };
 
 export default function DistinguishedCircle() {
-  const { role } = useAuth();
+  const { role, activeComplexId } = useAuth(); // التعديل: استخراج activeComplexId
   const [course, setCourse] = useState('1');
   const [weekInCourse, setWeekInCourse] = useState('1');
   const [day, setDay] = useState('الأحد');
@@ -49,11 +49,17 @@ export default function DistinguishedCircle() {
   const [scores, setScores] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
 
+  // التعديل: جلب الحلقات الخاصة بالمجمع النشط فقط
   useEffect(() => {
-    supabase.from('circles').select('id, name').then(({ data }) => {
+    let query = supabase.from('circles').select('id, name');
+    if (activeComplexId) {
+      query = query.eq('complex_id', activeComplexId);
+    }
+    
+    query.then(({ data }) => {
       if (data) setCircles(data);
     });
-  }, []);
+  }, [activeComplexId]); // إعادة الجلب إذا تغير المجمع النشط
 
   useEffect(() => {
     if (circles.length) calculateScores();

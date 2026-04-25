@@ -8,6 +8,10 @@ interface AuthContextType {
   user: User | null;
   session: Session | null;
   role: AppRole | null;
+  circleId: string | null; 
+  userComplexId: string | null; 
+  activeComplexId: string | null; 
+  setActiveComplexId: (id: string | null) => void; 
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signUp: (email: string, password: string) => Promise<{ error: Error | null }>;
@@ -20,15 +24,59 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [role, setRole] = useState<AppRole | null>(null);
+  const [circleId, setCircleId] = useState<string | null>(null);
+  const [userComplexId, setUserComplexId] = useState<string | null>(null);
+  
+  
+  const [activeComplexId, setInternalActiveComplexId] = useState<string | null>(() => {
+    return localStorage.getItem('activeComplexId');
+  });
+
+  
+  const setActiveComplexId = (id: string | null) => {
+    setInternalActiveComplexId(id);
+    if (id) {
+      localStorage.setItem('activeComplexId', id);
+    } else {
+      localStorage.removeItem('activeComplexId');
+    }
+  };
+
   const [loading, setLoading] = useState(true);
 
-  const fetchRole = async (userId: string) => {
-    const { data } = await supabase
+  const fetchUserContext = async (userId: string) => {
+    
+    const { data: roleData } = await supabase
       .from('user_roles')
-      .select('role')
+      .select('role, complex_id')
       .eq('user_id', userId)
       .maybeSingle();
-    setRole((data?.role as AppRole) ?? null);
+      
+    const fetchedRole = (roleData?.role as AppRole) ?? null;
+    const fetchedComplexId = roleData?.complex_id ?? null;
+
+    setRole(fetchedRole);
+    setUserComplexId(fetchedComplexId);
+    
+    
+    if (fetchedComplexId) {
+      setActiveComplexId(fetchedComplexId);
+    } else {
+      const savedComplex = localStorage.getItem('activeComplexId');
+      setActiveComplexId(savedComplex);
+    }
+
+    
+    if (fetchedRole === 'teacher') {
+      const { data: circleData } = await supabase
+        .from('circles')
+        .select('id')
+        .eq('teacher_id', userId)
+        .maybeSingle();
+      setCircleId(circleData?.id ?? null);
+    } else {
+      setCircleId(null);
+    }
   };
 
   useEffect(() => {
@@ -37,9 +85,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setSession(session);
         setUser(session?.user ?? null);
         if (session?.user) {
-          setTimeout(() => fetchRole(session.user.id), 0);
+          setTimeout(() => fetchUserContext(session.user.id), 0);
         } else {
           setRole(null);
+          setCircleId(null);
+          setUserComplexId(null);
+          setActiveComplexId(null); 
         }
         setLoading(false);
       }
@@ -49,7 +100,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) {
-        fetchRole(session.user.id);
+        fetchUserContext(session.user.id);
       }
       setLoading(false);
     });
@@ -76,10 +127,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
     setSession(null);
     setRole(null);
+    setCircleId(null);
+    setUserComplexId(null);
+    setActiveComplexId(null);
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, role, loading, signIn, signUp, signOut }}>
+    <AuthContext.Provider value={{ 
+      user, session, role, circleId, 
+      userComplexId, activeComplexId, setActiveComplexId, 
+      loading, signIn, signUp, signOut 
+    }}>
       {children}
     </AuthContext.Provider>
   );
